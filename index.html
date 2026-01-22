@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2026 포차코 모바일 다이어리</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @font-face {
+            font-family: 'ParkDaHyun';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2411-3@1.0/Ownglyph_ParkDaHyun.woff2') format('woff2');
+        }
+
+        :root {
+            --mint-primary: #a7f3d0;
+            --mint-dark: #059669;
+            --mint-deep: #064e3b;
+            --pastel-pink: #fff1f2;
+            --border-pink: #fecdd3;
+            --gold-firefly: #fef08a;
+            --header-border: rgba(167, 243, 208, 0.4);
+        }
+
+        body {
+            font-family: 'ParkDaHyun', sans-serif;
+            background-color: #0c0a09;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('https://cdn.imweb.me/upload/S202207202685e30f16e24/41f854bd38a2b.jpeg');
+            background-size: cover; background-position: center;
+            opacity: 0.45; z-index: -2;
+        }
+
+        .firefly {
+            position: fixed; width: 3px; height: 3px;
+            background: var(--gold-firefly); border-radius: 50%;
+            z-index: -1; pointer-events: none;
+            box-shadow: 0 0 10px 2px rgba(254, 240, 138, 0.9); opacity: 0;
+        }
+
+        @keyframes firefly-flash {
+            0% { opacity: 0; transform: scale(0.5) translate(0, 0); }
+            30% { opacity: 1; transform: scale(1.2) translate(15px, -30px); }
+            70% { opacity: 0.6; transform: scale(1) translate(-15px, -60px); }
+            100% { opacity: 0; transform: scale(0.5) translate(0, -90px); }
+        }
+
+        .jumping-pochaco {
+            width: 65px;
+            height: auto;
+            animation: jump-subtle 1.5s ease-in-out infinite;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+        }
+
+        @keyframes jump-subtle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .app-container {
+            width: 100%; max-width: 414px; height: 100vh; max-height: 850px;
+            position: relative; display: flex; flex-direction: column;
+            padding: 15px; box-sizing: border-box; overflow-y: auto; scrollbar-width: none;
+        }
+
+        .calendar-card {
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 2rem;
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
+        }
+
+        .header-date-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 20px;
+            background: var(--mint-deep);
+            border: 2px solid var(--header-border);
+            border-radius: 2rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .year-label { color: #ffffff; font-weight: 800; font-size: 1.1rem; border-right: 1px solid rgba(255,255,255,0.3); padding-right: 10px; }
+        .month-label { color: var(--mint-primary); font-weight: 900; font-size: 1.5rem; }
+
+        .day-cell {
+            min-height: 80px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 6px;
+            border-radius: 0.5rem; 
+            cursor: pointer;
+            position: relative;
+            border: 1.5px solid var(--border-pink);
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+        }
+        
+        .day-cell:hover {
+            transform: translateY(-3px);
+            border-color: var(--mint-dark);
+            background: white;
+            z-index: 10;
+        }
+
+        .day-number { 
+            width: 100%;
+            text-align: center;
+            font-size: 1rem; 
+            color: #0f172a; 
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .day-preview {
+            font-size: 0.65rem;
+            color: #475569;
+            line-height: 1.2;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2; 
+            -webkit-box-orient: vertical;
+            word-break: break-all;
+            text-align: center;
+        }
+
+        .skeleton {
+            background-color: rgba(0, 0, 0, 0.1);
+            animation: pulse 1s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 0.2; } }
+
+        .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%;
+            border-top: 2px solid white; width: 18px; height: 18px;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .selected-item {
+            border-color: var(--mint-dark) !important;
+            background-color: var(--mint-primary) !important;
+        }
+
+        .glass-modal {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(25px);
+            border-radius: 3rem;
+        }
+
+        /* 에러 메시지 상자 */
+        #errorMessage {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div id="fireflyContainer" class="fixed inset-0 pointer-events-none"></div>
+    <div id="errorMessage"></div>
+
+    <main class="app-container">
+        <!-- 상단 바 -->
+        <div class="flex justify-between items-center mb-6 px-2 relative">
+            <div class="text-white opacity-95 text-sm tracking-widest font-bold">POCHACO 2026</div>
+            
+            <div class="flex items-center gap-2">
+                <img src="https://raw.githubusercontent.com/shineonyou1274/pocha01/0278eacfacbbac92646f4c42f9124d7c4a25a81e/PhotoshopExtension_Image.png" class="jumping-pochaco" alt="Jumping Pochaco">
+                
+                <button id="bgmToggle" class="bg-white/90 w-11 h-11 rounded-full flex items-center justify-center text-teal-800 shadow-xl z-20 transition-all active:scale-90">
+                    <i id="bgmIcon" class="fas fa-play text-xl"></i>
+                </button>
+            </div>
+
+            <audio id="bgm" loop preload="auto">
+                <source src="https://raw.githubusercontent.com/shineonyou1274/carol/b2534e47b695bb7531c25cb59d31aa0fa46679d3/%EB%88%88%EA%BD%83%20%EC%86%8D%EC%9D%98%20%ED%81%AC%EB%A6%AC%EC%8A%A4%EB%A7%88%EC%8A%A4%20(1).mp3" type="audio/mpeg">
+            </audio>
+        </div>
+
+        <header class="text-center mb-8 flex flex-col items-center">
+            <h1 class="text-3xl text-white font-bold drop-shadow-lg">인터랙티브 다이어리</h1>
+            <p class="text-teal-50 text-xs opacity-90 mt-1">공손히 기록하는 당신의 소중한 하루</p>
+        </header>
+
+        <div class="calendar-card p-4 shadow-2xl mb-6 flex-grow flex flex-col">
+            <div class="flex items-center justify-center gap-4 mb-6">
+                <button id="prevMonth" class="w-10 h-10 rounded-full bg-teal-100 text-teal-900 flex items-center justify-center shadow-sm active:scale-75 transition-all">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                
+                <div class="header-date-box">
+                    <span id="yearDisplay" class="year-label">2026년</span>
+                    <span id="monthDisplay" class="month-label">1월</span>
+                </div>
+
+                <button id="nextMonth" class="w-10 h-10 rounded-full bg-teal-100 text-teal-900 flex items-center justify-center shadow-sm active:scale-75 transition-all">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-7 gap-1 mb-4">
+                <div class="text-center text-rose-600 font-black text-[18px]">일</div>
+                <div class="text-center text-slate-800 font-black text-[18px]">월</div>
+                <div class="text-center text-slate-800 font-black text-[18px]">화</div>
+                <div class="text-center text-slate-800 font-black text-[18px]">수</div>
+                <div class="text-center text-slate-800 font-black text-[18px]">목</div>
+                <div class="text-center text-slate-800 font-black text-[18px]">금</div>
+                <div class="text-center text-teal-700 font-black text-[18px]">토</div>
+            </div>
+
+            <div id="calendarDays" class="grid grid-cols-7 gap-1.5 flex-grow overflow-y-auto" style="min-height: 400px;"></div>
+        </div>
+        
+        <div class="text-center text-white/50 text-[10px] pb-4">
+            공손하게 안내하는 포차코의 2026 다이어리 앱
+        </div>
+    </main>
+
+    <div id="diaryModal" class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/70 backdrop-blur-md hidden">
+        <div class="glass-modal w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+            <div class="bg-teal-100/60 p-6 flex justify-between items-center border-b border-teal-200">
+                <h3 id="modalDate" class="text-xl font-bold text-teal-900">2026년 1월 1일</h3>
+                <button onclick="closeModal()" class="text-teal-700 p-2"><i class="fas fa-times text-2xl"></i></button>
+            </div>
+            <div class="p-6 space-y-6">
+                <div>
+                    <label class="block text-teal-900 mb-3 font-bold text-xs uppercase tracking-widest">오늘의 기분</label>
+                    <div class="flex justify-between gap-1">
+                        <button class="mood-btn p-3 rounded-2xl text-2xl flex-1 bg-white/50" onclick="selectMood(this, '🥰')">🥰</button>
+                        <button class="mood-btn p-3 rounded-2xl text-2xl flex-1 bg-white/50" onclick="selectMood(this, '💖')">💖</button>
+                        <button class="mood-btn p-3 rounded-2xl text-2xl flex-1 bg-white/50" onclick="selectMood(this, '🥳')">🥳</button>
+                        <button class="mood-btn p-3 rounded-2xl text-2xl flex-1 bg-white/50" onclick="selectMood(this, '🙂')">🙂</button>
+                        <button class="mood-btn p-3 rounded-2xl text-2xl flex-1 bg-white/50" onclick="selectMood(this, '💧')">💧</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-teal-900 mb-3 font-bold text-xs uppercase tracking-widest">포차코 스티커</label>
+                    <div class="flex justify-between gap-2">
+                        <button class="sticker-btn p-1 rounded-2xl flex-1 bg-white/50" onclick="selectSticker(this, 's1')">
+                            <img src="https://raw.githubusercontent.com/shineonyou1274/diary/bbdea4d38e35d6b28b22a55cf22d307a00ebc9b7/PhotoshopExtension_Image%20(3).png" class="w-full">
+                        </button>
+                        <button class="sticker-btn p-1 rounded-2xl flex-1 bg-white/50" onclick="selectSticker(this, 's2')">
+                            <img src="https://raw.githubusercontent.com/shineonyou1274/diary/bbdea4d38e35d6b28b22a55cf22d307a00ebc9b7/PhotoshopExtension_Image%20(4).png" class="w-full">
+                        </button>
+                        <button class="sticker-btn p-1 rounded-2xl flex-1 bg-white/50" onclick="selectSticker(this, 's3')">
+                            <img src="https://raw.githubusercontent.com/shineonyou1274/diary/bbdea4d38e35d6b28b22a55cf22d307a00ebc9b7/PhotoshopExtension_Image%20(5).png" class="w-full">
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-teal-900 mb-3 font-bold text-xs uppercase tracking-widest">기록 내용</label>
+                    <textarea id="diaryContent" class="w-full h-28 p-4 rounded-2xl bg-white/80 border-none ring-1 ring-teal-200 outline-none text-sm" placeholder="오늘 어떤 일이 있었나요?"></textarea>
+                </div>
+                <button id="saveBtn" onclick="handleSave()" class="w-full py-4 bg-teal-600 text-white rounded-[2rem] text-lg font-bold shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+                    <span>저장 완료하기</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentYear = 2026;
+        let currentMonth = 0;
+        let selectedMood = '';
+        let selectedSticker = '';
+        let isPlaying = false;
+        let diaryData = {};
+
+        const calendarDays = document.getElementById('calendarDays');
+        const yearDisplay = document.getElementById('yearDisplay');
+        const monthDisplay = document.getElementById('monthDisplay');
+        const diaryModal = document.getElementById('diaryModal');
+        const modalDate = document.getElementById('modalDate');
+        const bgm = document.getElementById('bgm');
+        const bgmToggle = document.getElementById('bgmToggle');
+        const bgmIcon = document.getElementById('bgmIcon');
+        const errorEl = document.getElementById('errorMessage');
+
+        function showError(msg) {
+            errorEl.textContent = msg;
+            errorEl.style.display = 'block';
+            setTimeout(() => { errorEl.style.display = 'none'; }, 5000);
+        }
+
+        function loadInitialData() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler((data) => {
+                        diaryData = data || {};
+                        renderCalendar();
+                    })
+                    .withFailureHandler((err) => {
+                        showError("데이터 로드 실패: " + err.message);
+                        renderCalendar();
+                    })
+                    .getAllDiaryData();
+            } else {
+                console.log("GAS 환경이 아닙니다. 로컬 모드로 실행합니다.");
+                renderCalendar();
+            }
+        }
+
+        bgmToggle.addEventListener('click', () => {
+            if (isPlaying) {
+                bgm.pause();
+                bgmIcon.classList.replace('fa-pause', 'fa-play');
+                isPlaying = false;
+            } else {
+                bgm.play().then(() => {
+                    bgmIcon.classList.replace('fa-play', 'fa-pause');
+                    isPlaying = true;
+                }).catch(() => showError("음악 재생을 위해 화면을 클릭해주세요!"));
+            }
+        });
+
+        function createFirefly() {
+            const container = document.getElementById('fireflyContainer');
+            if(!container) return;
+            const firefly = document.createElement('div');
+            firefly.className = 'firefly';
+            const size = 1 + Math.random() * 3;
+            firefly.style.left = `${Math.random() * 100}%`;
+            firefly.style.top = `${Math.random() * 100}%`;
+            firefly.style.width = `${size}px`;
+            firefly.style.height = `${size}px`;
+            firefly.style.animation = `firefly-flash ${6 + Math.random() * 8}s ease-in-out ${Math.random() * 5}s infinite`;
+            container.appendChild(firefly);
+            setTimeout(() => firefly.remove(), 14000);
+        }
+        setInterval(createFirefly, 400);
+
+        function renderCalendar() {
+            showSkeleton();
+            setTimeout(() => {
+                const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+                const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
+                yearDisplay.textContent = `${currentYear}년`;
+                monthDisplay.textContent = `${currentMonth + 1}월`;
+                calendarDays.innerHTML = '';
+                for (let i = 0; i < firstDay; i++) calendarDays.appendChild(document.createElement('div'));
+                for (let date = 1; date <= lastDate; date++) {
+                    const dayCell = document.createElement('div');
+                    dayCell.className = 'day-cell shadow-sm';
+                    const dateKey = `${currentYear}-${currentMonth + 1}-${date}`;
+                    let cellContent = `<span class="day-number">${date}</span>`;
+                    
+                    if (diaryData[dateKey]) {
+                        dayCell.style.background = 'rgba(167, 243, 208, 0.85)';
+                        cellContent += `<span class="text-[12px] font-bold text-teal-900 mb-1">${diaryData[dateKey].mood}</span>`;
+                        const rawContent = diaryData[dateKey].content || "";
+                        const segments = rawContent.split(/\s+/).filter(s => s.length > 0);
+                        const previewText = segments.length > 2 
+                            ? segments.slice(0, 2).join(' ') + '..' 
+                            : segments.join(' ');
+                        cellContent += `<div class="day-preview">${previewText}</div>`;
+                    }
+                    
+                    dayCell.innerHTML = cellContent;
+                    dayCell.onclick = () => openModal(date);
+                    calendarDays.appendChild(dayCell);
+                }
+            }, 500);
+        }
+
+        function showSkeleton() {
+            calendarDays.innerHTML = '';
+            for (let i = 0; i < 35; i++) {
+                const skel = document.createElement('div');
+                skel.className = 'day-cell skeleton border-none';
+                calendarDays.appendChild(skel);
+            }
+        }
+
+        document.getElementById('prevMonth').onclick = () => {
+            currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            renderCalendar();
+        };
+        document.getElementById('nextMonth').onclick = () => {
+            currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            renderCalendar();
+        };
+
+        function openModal(date) {
+            modalDate.textContent = `${currentYear}년 ${currentMonth + 1}월 ${date}일`;
+            modalDate.dataset.date = date;
+            selectedMood = ''; selectedSticker = '';
+            document.getElementById('diaryContent').value = '';
+            document.querySelectorAll('.mood-btn, .sticker-btn').forEach(b => b.classList.remove('selected-item'));
+            const dateKey = `${currentYear}-${currentMonth + 1}-${date}`;
+            if (diaryData[dateKey]) {
+                const data = diaryData[dateKey];
+                document.getElementById('diaryContent').value = data.content || "";
+            }
+            diaryModal.classList.remove('hidden');
+        }
+
+        function closeModal() { diaryModal.classList.add('hidden'); }
+        function selectMood(btn, mood) {
+            document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected-item'));
+            btn.classList.add('selected-item'); selectedMood = mood;
+        }
+        function selectSticker(btn, sticker) {
+            document.querySelectorAll('.sticker-btn').forEach(b => b.classList.remove('selected-item'));
+            btn.classList.add('selected-item'); selectedSticker = sticker;
+        }
+
+        function handleSave() {
+            const saveBtn = document.getElementById('saveBtn');
+            const content = document.getElementById('diaryContent').value;
+            const date = modalDate.dataset.date;
+            const dateKey = `${currentYear}-${currentMonth + 1}-${date}`;
+            if (!selectedMood) return showError("기분을 선택해주세요!");
+            
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<div class="spinner"></div>';
+            const payload = { dateKey, mood: selectedMood, sticker: selectedSticker, content };
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(() => {
+                        diaryData[dateKey] = payload;
+                        finalizeSave(saveBtn);
+                    })
+                    .withFailureHandler((err) => {
+                        showError("저장 실패: " + err.message);
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = '<span>저장 완료하기</span>';
+                    })
+                    .saveDiaryData(payload);
+            } else {
+                diaryData[dateKey] = payload;
+                setTimeout(() => finalizeSave(saveBtn), 1000);
+            }
+        }
+
+        function finalizeSave(btn) {
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.8 }, colors: ['#a7f3d0', '#fecdd3', '#fef08a'] });
+            setTimeout(() => {
+                closeModal();
+                btn.disabled = false;
+                btn.innerHTML = '<span>저장 완료하기</span>';
+                renderCalendar();
+            }, 500);
+        }
+
+        window.onload = () => {
+            loadInitialData();
+            for(let i=0; i<30; i++) createFirefly();
+        };
+    </script>
+</body>
+</html>
